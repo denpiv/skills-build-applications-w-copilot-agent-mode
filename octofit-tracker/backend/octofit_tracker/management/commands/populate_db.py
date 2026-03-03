@@ -1,82 +1,134 @@
 from django.core.management.base import BaseCommand
-from djongo import models
-from django.conf import settings
+from octofit_tracker.models import User, Team, Activity, Leaderboard, Workout
 from pymongo import MongoClient
 
 class Command(BaseCommand):
-    help = 'Populate the octofit_db database with test data'
+    help = 'Populate the octofit_db database with test data using Django ORM'
 
     def handle(self, *args, **options):
-        client = MongoClient(host='localhost', port=27017)
-        db = client['octofit_db']
+        # Clear existing data using direct MongoDB (Djongo ORM delete has issues)
+        try:
+            client = MongoClient(host='localhost', port=27017)
+            db = client['octofit_db']
+            db['octofit_tracker_user'].delete_many({})
+            db['octofit_tracker_team'].delete_many({})
+            db['octofit_tracker_activity'].delete_many({})
+            db['octofit_tracker_leaderboard'].delete_many({})
+            db['octofit_tracker_workout'].delete_many({})
+        except Exception as e:
+            self.stdout.write(f'Note: Could not clear collections directly: {e}')
 
-        # Collections
-        users = db['users']
-        teams = db['teams']
-        activities = db['activities']
-        leaderboard = db['leaderboard']
-        workouts = db['workouts']
+        # Create teams (without members initially)
+        marvel_team, _ = Team.objects.get_or_create(name='Marvel')
+        dc_team, _ = Team.objects.get_or_create(name='DC')
 
-        # Clear existing data
-        users.delete_many({})
-        teams.delete_many({})
-        activities.delete_many({})
-        leaderboard.delete_many({})
-        workouts.delete_many({})
+        # Create Marvel users
+        iron_man, _ = User.objects.get_or_create(
+            username='iron_man',
+            defaults={
+                'email': 'ironman@marvel.com',
+                'first_name': 'Tony',
+                'last_name': 'Stark',
+                'team': marvel_team,
+            },
+        )
+        cap, _ = User.objects.get_or_create(
+            username='captain_america',
+            defaults={
+                'email': 'cap@marvel.com',
+                'first_name': 'Steve',
+                'last_name': 'Rogers',
+                'team': marvel_team,
+            },
+        )
+        widow, _ = User.objects.get_or_create(
+            username='black_widow',
+            defaults={
+                'email': 'widow@marvel.com',
+                'first_name': 'Natasha',
+                'last_name': 'Romanoff',
+                'team': marvel_team,
+            },
+        )
 
-        # Create unique index on email
-        users.create_index('email', unique=True)
+        # Create DC users
+        superman, _ = User.objects.get_or_create(
+            username='superman',
+            defaults={
+                'email': 'superman@dc.com',
+                'first_name': 'Clark',
+                'last_name': 'Kent',
+                'team': dc_team,
+            },
+        )
+        batman, _ = User.objects.get_or_create(
+            username='batman',
+            defaults={
+                'email': 'batman@dc.com',
+                'first_name': 'Bruce',
+                'last_name': 'Wayne',
+                'team': dc_team,
+            },
+        )
+        wonder_woman, _ = User.objects.get_or_create(
+            username='wonder_woman',
+            defaults={
+                'email': 'wonderwoman@dc.com',
+                'first_name': 'Diana',
+                'last_name': 'Prince',
+                'team': dc_team,
+            },
+        )
 
-        # Sample teams
-        marvel_team = {'name': 'Marvel', 'members': []}
-        dc_team = {'name': 'DC', 'members': []}
-        marvel_team_id = teams.insert_one(marvel_team).inserted_id
-        dc_team_id = teams.insert_one(dc_team).inserted_id
+        # Update team members
+        marvel_team.members = [iron_man, cap, widow]
+        marvel_team.save()
+        dc_team.members = [superman, batman, wonder_woman]
+        dc_team.save()
 
-        # Sample users (superheroes)
-        marvel_heroes = [
-            {'name': 'Iron Man', 'email': 'ironman@marvel.com', 'team_id': marvel_team_id},
-            {'name': 'Captain America', 'email': 'cap@marvel.com', 'team_id': marvel_team_id},
-            {'name': 'Black Widow', 'email': 'widow@marvel.com', 'team_id': marvel_team_id},
-        ]
-        dc_heroes = [
-            {'name': 'Superman', 'email': 'superman@dc.com', 'team_id': dc_team_id},
-            {'name': 'Batman', 'email': 'batman@dc.com', 'team_id': dc_team_id},
-            {'name': 'Wonder Woman', 'email': 'wonderwoman@dc.com', 'team_id': dc_team_id},
-        ]
-        user_ids = []
-        for hero in marvel_heroes + dc_heroes:
-            user_id = users.insert_one(hero).inserted_id
-            user_ids.append(user_id)
+        # Create activities
+        Activity.objects.get_or_create(
+            user=iron_man, defaults={'type': 'Run', 'duration': 30, 'calories': 280}
+        )
+        Activity.objects.get_or_create(
+            user=cap, defaults={'type': 'Cycle', 'duration': 60, 'calories': 420}
+        )
+        Activity.objects.get_or_create(
+            user=widow, defaults={'type': 'Swim', 'duration': 45, 'calories': 320}
+        )
+        Activity.objects.get_or_create(
+            user=superman, defaults={'type': 'Run', 'duration': 50, 'calories': 350}
+        )
+        Activity.objects.get_or_create(
+            user=batman, defaults={'type': 'Cycle', 'duration': 40, 'calories': 280}
+        )
+        Activity.objects.get_or_create(
+            user=wonder_woman, defaults={'type': 'Swim', 'duration': 55, 'calories': 380}
+        )
 
-        # Update teams with members
-        teams.update_one({'_id': marvel_team_id}, {'$set': {'members': user_ids[:3]}})
-        teams.update_one({'_id': dc_team_id}, {'$set': {'members': user_ids[3:]}})
+        # Create leaderboard entries
+        Leaderboard.objects.get_or_create(team=marvel_team, defaults={'score': 150})
+        Leaderboard.objects.get_or_create(team=dc_team, defaults={'score': 120})
 
-        # Sample activities
-        activities.insert_many([
-            {'user_id': user_ids[0], 'type': 'run', 'distance': 5, 'duration': 30},
-            {'user_id': user_ids[1], 'type': 'cycle', 'distance': 20, 'duration': 60},
-            {'user_id': user_ids[2], 'type': 'swim', 'distance': 2, 'duration': 45},
-            {'user_id': user_ids[3], 'type': 'run', 'distance': 10, 'duration': 50},
-            {'user_id': user_ids[4], 'type': 'cycle', 'distance': 15, 'duration': 40},
-            {'user_id': user_ids[5], 'type': 'swim', 'distance': 3, 'duration': 55},
-        ])
+        # Create workouts
+        Workout.objects.get_or_create(
+            name='HIIT Blast',
+            defaults={
+                'description': 'High-intensity interval training with bodyweight circuits',
+                'difficulty': 'Hard',
+            },
+        )
+        Workout.objects.get_or_create(
+            name='Core Builder',
+            defaults={'description': 'Core-focused strength circuit', 'difficulty': 'Medium'},
+        )
+        Workout.objects.get_or_create(
+            name='Yoga Flow',
+            defaults={'description': 'Gentle yoga and stretching routine', 'difficulty': 'Easy'},
+        )
+        Workout.objects.get_or_create(
+            name='Cardio Burst',
+            defaults={'description': 'Short and intense cardio session', 'difficulty': 'Hard'},
+        )
 
-        # Sample leaderboard
-        leaderboard.insert_many([
-            {'team_id': marvel_team_id, 'points': 150},
-            {'team_id': dc_team_id, 'points': 120},
-        ])
-
-        # Sample workouts
-        workouts.insert_many([
-            {'user_id': user_ids[0], 'workout': 'Pushups', 'reps': 50},
-            {'user_id': user_ids[1], 'workout': 'Squats', 'reps': 40},
-            {'user_id': user_ids[2], 'workout': 'Plank', 'duration': 120},
-            {'user_id': user_ids[3], 'workout': 'Pushups', 'reps': 60},
-            {'user_id': user_ids[4], 'workout': 'Squats', 'reps': 45},
-            {'user_id': user_ids[5], 'workout': 'Plank', 'duration': 150},
-        ])
-
-        self.stdout.write(self.style.SUCCESS('octofit_db database populated with test data.'))
+        self.stdout.write(self.style.SUCCESS('octofit_db database populated with test data via Django ORM.'))
