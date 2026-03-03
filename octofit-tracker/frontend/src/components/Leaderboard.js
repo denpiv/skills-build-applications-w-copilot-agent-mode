@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
-import { getApiBaseUrl } from '../apiBaseUrl';
 
-const LEADERBOARD_ENDPOINT = `${getApiBaseUrl()}/leaderboard/`;
+const LEADERBOARD_ENDPOINT = `https://${process.env.REACT_APP_CODESPACE_NAME}-8000.app.github.dev/api/leaderboard/`;
 
 function Leaderboard() {
   const [entries, setEntries] = useState([]);

@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
-import { getApiBaseUrl } from '../apiBaseUrl';
 
-const USERS_ENDPOINT = `${getApiBaseUrl()}/users/`;
+const USERS_ENDPOINT = `https://${process.env.REACT_APP_CODESPACE_NAME}-8000.app.github.dev/api/users/`;
 
 function Users() {
   const [users, setUsers] = useState([]);

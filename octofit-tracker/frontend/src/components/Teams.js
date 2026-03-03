@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
-import { getApiBaseUrl } from '../apiBaseUrl';
 
-const TEAMS_ENDPOINT = `${getApiBaseUrl()}/teams/`;
+const TEAMS_ENDPOINT = `https://${process.env.REACT_APP_CODESPACE_NAME}-8000.app.github.dev/api/teams/`;
 
 function Teams() {
   const [teams, setTeams] = useState([]);

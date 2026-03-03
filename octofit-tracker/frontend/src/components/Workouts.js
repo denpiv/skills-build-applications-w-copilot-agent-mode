@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
-import { getApiBaseUrl } from '../apiBaseUrl';
 
-const WORKOUTS_ENDPOINT = `${getApiBaseUrl()}/workouts/`;
+const WORKOUTS_ENDPOINT = `https://${process.env.REACT_APP_CODESPACE_NAME}-8000.app.github.dev/api/workouts/`;
 
 function Workouts() {
   const [workouts, setWorkouts] = useState([]);
