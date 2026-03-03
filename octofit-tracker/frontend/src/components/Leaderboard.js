@@ -1,25 +1,30 @@
 import { useEffect, useState } from 'react';
+import { getApiBaseUrl } from '../apiBaseUrl';
 
-const API_BASE_URL = process.env.REACT_APP_CODESPACE_NAME
-  ? `https://${process.env.REACT_APP_CODESPACE_NAME}-8000.app.github.dev/api`
-  : 'http://localhost:8000/api';
-
-const LEADERBOARD_ENDPOINT = `${API_BASE_URL}/leaderboard/`;
+const LEADERBOARD_ENDPOINT = `${getApiBaseUrl()}/leaderboard/`;
 
 function Leaderboard() {
   const [entries, setEntries] = useState([]);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [selectedEntry, setSelectedEntry] = useState(null);
 
   const fetchLeaderboard = async () => {
     try {
       setLoading(true);
+      setError('');
       console.log('Leaderboard endpoint:', LEADERBOARD_ENDPOINT);
       const response = await fetch(LEADERBOARD_ENDPOINT);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
       const data = await response.json();
       console.log('Leaderboard fetched data:', data);
       setEntries(Array.isArray(data) ? data : data.results || []);
+    } catch (fetchError) {
+      setError(`Unable to load leaderboard from API (${fetchError.message}).`);
+      setEntries([]);
     } finally {
       setLoading(false);
     }
@@ -63,6 +68,8 @@ function Leaderboard() {
           </div>
         </form>
 
+        {error && <div className="alert alert-warning mb-3">{error}</div>}
+
         <div className="table-responsive">
           <table className="table table-striped table-hover align-middle">
             <thead className="table-light">
@@ -76,24 +83,32 @@ function Leaderboard() {
               </tr>
             </thead>
             <tbody>
-              {filteredEntries.map((entry, index) => (
-                <tr key={entry.id || entry._id || index}>
-                  <td>{index + 1}</td>
-                  <td>{entry.team || '-'}</td>
-                  <td>{entry.score ?? '-'}</td>
-                  <td className="text-end">
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-outline-primary"
-                      data-bs-toggle="modal"
-                      data-bs-target="#leaderboardDetailModal"
-                      onClick={() => setSelectedEntry(entry)}
-                    >
-                      View
-                    </button>
+              {filteredEntries.length === 0 ? (
+                <tr>
+                  <td colSpan="4" className="text-center text-muted py-4">
+                    {loading ? 'Loading leaderboard...' : 'No leaderboard entries found from the API.'}
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredEntries.map((entry, index) => (
+                  <tr key={entry.id || entry._id || index}>
+                    <td>{index + 1}</td>
+                    <td>{entry.team || '-'}</td>
+                    <td>{entry.score ?? '-'}</td>
+                    <td className="text-end">
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-primary"
+                        data-bs-toggle="modal"
+                        data-bs-target="#leaderboardDetailModal"
+                        onClick={() => setSelectedEntry(entry)}
+                      >
+                        View
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

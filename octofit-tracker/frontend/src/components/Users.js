@@ -1,25 +1,30 @@
 import { useEffect, useState } from 'react';
+import { getApiBaseUrl } from '../apiBaseUrl';
 
-const API_BASE_URL = process.env.REACT_APP_CODESPACE_NAME
-  ? `https://${process.env.REACT_APP_CODESPACE_NAME}-8000.app.github.dev/api`
-  : 'http://localhost:8000/api';
-
-const USERS_ENDPOINT = `${API_BASE_URL}/users/`;
+const USERS_ENDPOINT = `${getApiBaseUrl()}/users/`;
 
 function Users() {
   const [users, setUsers] = useState([]);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [selectedUser, setSelectedUser] = useState(null);
 
   const fetchUsers = async () => {
     try {
       setLoading(true);
+      setError('');
       console.log('Users endpoint:', USERS_ENDPOINT);
       const response = await fetch(USERS_ENDPOINT);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
       const data = await response.json();
       console.log('Users fetched data:', data);
       setUsers(Array.isArray(data) ? data : data.results || []);
+    } catch (fetchError) {
+      setError(`Unable to load users from API (${fetchError.message}).`);
+      setUsers([]);
     } finally {
       setLoading(false);
     }
@@ -67,6 +72,8 @@ function Users() {
           </div>
         </form>
 
+        {error && <div className="alert alert-warning mb-3">{error}</div>}
+
         <div className="table-responsive">
           <table className="table table-striped table-hover align-middle">
             <thead className="table-light">
@@ -80,24 +87,32 @@ function Users() {
               </tr>
             </thead>
             <tbody>
-              {filteredUsers.map((user, index) => (
-                <tr key={user.id || user._id || index}>
-                  <td>{index + 1}</td>
-                  <td>{user.username || '-'}</td>
-                  <td>{user.email || '-'}</td>
-                  <td className="text-end">
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-outline-primary"
-                      data-bs-toggle="modal"
-                      data-bs-target="#usersDetailModal"
-                      onClick={() => setSelectedUser(user)}
-                    >
-                      View
-                    </button>
+              {filteredUsers.length === 0 ? (
+                <tr>
+                  <td colSpan="4" className="text-center text-muted py-4">
+                    {loading ? 'Loading users...' : 'No users found from the API.'}
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredUsers.map((user, index) => (
+                  <tr key={user.id || user._id || index}>
+                    <td>{index + 1}</td>
+                    <td>{user.username || '-'}</td>
+                    <td>{user.email || '-'}</td>
+                    <td className="text-end">
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-primary"
+                        data-bs-toggle="modal"
+                        data-bs-target="#usersDetailModal"
+                        onClick={() => setSelectedUser(user)}
+                      >
+                        View
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

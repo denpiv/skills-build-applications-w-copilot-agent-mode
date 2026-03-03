@@ -1,25 +1,30 @@
 import { useEffect, useState } from 'react';
+import { getApiBaseUrl } from '../apiBaseUrl';
 
-const API_BASE_URL = process.env.REACT_APP_CODESPACE_NAME
-  ? `https://${process.env.REACT_APP_CODESPACE_NAME}-8000.app.github.dev/api`
-  : 'http://localhost:8000/api';
-
-const WORKOUTS_ENDPOINT = `${API_BASE_URL}/workouts/`;
+const WORKOUTS_ENDPOINT = `${getApiBaseUrl()}/workouts/`;
 
 function Workouts() {
   const [workouts, setWorkouts] = useState([]);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [selectedWorkout, setSelectedWorkout] = useState(null);
 
   const fetchWorkouts = async () => {
     try {
       setLoading(true);
+      setError('');
       console.log('Workouts endpoint:', WORKOUTS_ENDPOINT);
       const response = await fetch(WORKOUTS_ENDPOINT);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
       const data = await response.json();
       console.log('Workouts fetched data:', data);
       setWorkouts(Array.isArray(data) ? data : data.results || []);
+    } catch (fetchError) {
+      setError(`Unable to load workouts from API (${fetchError.message}).`);
+      setWorkouts([]);
     } finally {
       setLoading(false);
     }
@@ -67,6 +72,8 @@ function Workouts() {
           </div>
         </form>
 
+        {error && <div className="alert alert-warning mb-3">{error}</div>}
+
         <div className="table-responsive">
           <table className="table table-striped table-hover align-middle">
             <thead className="table-light">
@@ -81,25 +88,33 @@ function Workouts() {
               </tr>
             </thead>
             <tbody>
-              {filteredWorkouts.map((workout, index) => (
-                <tr key={workout.id || workout._id || index}>
-                  <td>{index + 1}</td>
-                  <td>{workout.name || '-'}</td>
-                  <td>{workout.difficulty || '-'}</td>
-                  <td>{workout.description || '-'}</td>
-                  <td className="text-end">
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-outline-primary"
-                      data-bs-toggle="modal"
-                      data-bs-target="#workoutsDetailModal"
-                      onClick={() => setSelectedWorkout(workout)}
-                    >
-                      View
-                    </button>
+              {filteredWorkouts.length === 0 ? (
+                <tr>
+                  <td colSpan="5" className="text-center text-muted py-4">
+                    {loading ? 'Loading workouts...' : 'No workouts found from the API.'}
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredWorkouts.map((workout, index) => (
+                  <tr key={workout.id || workout._id || index}>
+                    <td>{index + 1}</td>
+                    <td>{workout.name || '-'}</td>
+                    <td>{workout.difficulty || '-'}</td>
+                    <td>{workout.description || '-'}</td>
+                    <td className="text-end">
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-primary"
+                        data-bs-toggle="modal"
+                        data-bs-target="#workoutsDetailModal"
+                        onClick={() => setSelectedWorkout(workout)}
+                      >
+                        View
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

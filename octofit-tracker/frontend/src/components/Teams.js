@@ -1,25 +1,30 @@
 import { useEffect, useState } from 'react';
+import { getApiBaseUrl } from '../apiBaseUrl';
 
-const API_BASE_URL = process.env.REACT_APP_CODESPACE_NAME
-  ? `https://${process.env.REACT_APP_CODESPACE_NAME}-8000.app.github.dev/api`
-  : 'http://localhost:8000/api';
-
-const TEAMS_ENDPOINT = `${API_BASE_URL}/teams/`;
+const TEAMS_ENDPOINT = `${getApiBaseUrl()}/teams/`;
 
 function Teams() {
   const [teams, setTeams] = useState([]);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [selectedTeam, setSelectedTeam] = useState(null);
 
   const fetchTeams = async () => {
     try {
       setLoading(true);
+      setError('');
       console.log('Teams endpoint:', TEAMS_ENDPOINT);
       const response = await fetch(TEAMS_ENDPOINT);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
       const data = await response.json();
       console.log('Teams fetched data:', data);
       setTeams(Array.isArray(data) ? data : data.results || []);
+    } catch (fetchError) {
+      setError(`Unable to load teams from API (${fetchError.message}).`);
+      setTeams([]);
     } finally {
       setLoading(false);
     }
@@ -63,6 +68,8 @@ function Teams() {
           </div>
         </form>
 
+        {error && <div className="alert alert-warning mb-3">{error}</div>}
+
         <div className="table-responsive">
           <table className="table table-striped table-hover align-middle">
             <thead className="table-light">
@@ -76,24 +83,32 @@ function Teams() {
               </tr>
             </thead>
             <tbody>
-              {filteredTeams.map((team, index) => (
-                <tr key={team.id || team._id || index}>
-                  <td>{index + 1}</td>
-                  <td>{team.name || '-'}</td>
-                  <td>{Array.isArray(team.members) ? team.members.length : 0}</td>
-                  <td className="text-end">
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-outline-primary"
-                      data-bs-toggle="modal"
-                      data-bs-target="#teamsDetailModal"
-                      onClick={() => setSelectedTeam(team)}
-                    >
-                      View
-                    </button>
+              {filteredTeams.length === 0 ? (
+                <tr>
+                  <td colSpan="4" className="text-center text-muted py-4">
+                    {loading ? 'Loading teams...' : 'No teams found from the API.'}
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredTeams.map((team, index) => (
+                  <tr key={team.id || team._id || index}>
+                    <td>{index + 1}</td>
+                    <td>{team.name || '-'}</td>
+                    <td>{Array.isArray(team.members) ? team.members.length : 0}</td>
+                    <td className="text-end">
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-primary"
+                        data-bs-toggle="modal"
+                        data-bs-target="#teamsDetailModal"
+                        onClick={() => setSelectedTeam(team)}
+                      >
+                        View
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
