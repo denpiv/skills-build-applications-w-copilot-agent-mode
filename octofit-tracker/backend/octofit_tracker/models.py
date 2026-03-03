@@ -13,7 +13,7 @@ class User(models.Model):
 # Team
 class Team(models.Model):
     name = models.CharField(max_length=100, unique=True)
-    members = models.ArrayReferenceField(User)
+    members = models.ArrayReferenceField(User, related_name='member_teams')
     def __str__(self):
         return self.name
 
