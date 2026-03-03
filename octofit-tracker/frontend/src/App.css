@@ -1,0 +1,9 @@
+.app-shell .nav-link.active {
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.table td,
+.table th {
+  vertical-align: middle;
+}
